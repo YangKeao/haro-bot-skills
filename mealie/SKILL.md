@@ -1,12 +1,23 @@
 ---
 name: mealie
 description: Interact with Mealie recipe manager. Use when the user wants to search recipes, create recipes, add items to shopping lists, get today's meal plan, browse categories/tags, or manage their recipe collection. Triggers include "search recipes", "find a recipe", "add to shopping list", "what's for dinner", "today's meal", "create recipe", or any task requiring Mealie interaction.
-allowed-tools: Bash(curl:*), Bash(mealie:*)
+allowed-tools: Bash(curl:*), Bash(mealie:*), Bash(jq:*)
 ---
 
 # Mealie Recipe Manager Integration
 
 Interact with your Mealie instance to manage recipes, shopping lists, and meal plans.
+
+## Prerequisites
+
+This skill requires `jq` for JSON parsing. Install it if not available:
+```bash
+# Download to ~/bin
+mkdir -p ~/bin
+curl -sL https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -o ~/bin/jq
+chmod +x ~/bin/jq
+export PATH="$HOME/bin:$PATH"
+```
 
 ## Configuration
 
@@ -26,9 +37,9 @@ The config file should have restricted permissions (chmod 600).
 All Mealie API calls follow this pattern:
 
 ```bash
-# Load config
-MEALIE_URL=$(grep -o '"url"[[:space:]]*:[[:space:]]*"[^"]*"' ~/.config/mealie/config.json | cut -d'"' -f4)
-MEALIE_TOKEN=$(grep -o '"token"[[:space:]]*:[[:space:]]*"[^"]*"' ~/.config/mealie/config.json | cut -d'"' -f4)
+# Load config using jq
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
 
 # Make API call
 curl -s "${MEALIE_URL}/api/<endpoint>" \
@@ -40,34 +51,71 @@ curl -s "${MEALIE_URL}/api/<endpoint>" \
 
 ### Check Server Status
 ```bash
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
 curl -s "${MEALIE_URL}/api/app/about" \
   -H "Authorization: Bearer ${MEALIE_TOKEN}"
+```
+
+### List All Recipes
+```bash
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
+# Get all recipe names
+curl -s "${MEALIE_URL}/api/recipes?perPage=100" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq -r '.items[].name'
+
+# Get recipe names with slugs
+curl -s "${MEALIE_URL}/api/recipes?perPage=100" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq -r '.items[] | "\(.name) (\(.slug))"'
 ```
 
 ### Search Recipes
 Search across all recipes:
 
 ```bash
-curl -s "${MEALIE_URL}/api/recipes?search=pasta&page=1&perPage=20" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}"
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
+# Search and show names
+curl -s "${MEALIE_URL}/api/recipes?search=pasta&perPage=20" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq -r '.items[].name'
+
+# Search with URL encoding for Chinese
+curl -s "${MEALIE_URL}/api/recipes?search=%E7%81%AB%E9%94%85&perPage=20" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq -r '.items[].name'
 ```
 
 Optional parameters:
-- `search` - Search query
+- `search` - Search query (URL encode for special characters)
 - `categories` - Filter by category (comma-separated)
 - `tags` - Filter by tag (comma-separated)
 - `page`, `perPage` - Pagination
 
 ### Get Single Recipe
 ```bash
-curl -s "${MEALIE_URL}/api/recipes/{slug_or_id}" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}"
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
+# Get by slug
+curl -s "${MEALIE_URL}/api/recipes/spaghetti-bolognese" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq '{name, description, recipeIngredient: [.recipeIngredient[].note], recipeInstructions: [.recipeInstructions[].text]}'
 ```
 
 ### Create Recipe from URL
 Import a recipe from a website:
 
 ```bash
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
 curl -X POST "${MEALIE_URL}/api/recipes/create-url" \
   -H "Authorization: Bearer ${MEALIE_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -80,6 +128,9 @@ Returns the slug of the created recipe.
 Create a new recipe directly:
 
 ```bash
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
 curl -X POST "${MEALIE_URL}/api/recipes" \
   -H "Authorization: Bearer ${MEALIE_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -99,52 +150,81 @@ curl -X POST "${MEALIE_URL}/api/recipes" \
 
 ### Get Today's Meal Plan
 ```bash
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
 curl -s "${MEALIE_URL}/api/households/mealplans/today" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}"
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq '.[] | {date: .date, recipe: .recipe.name}'
 ```
 
 ### Get Shopping Lists
 ```bash
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
 curl -s "${MEALIE_URL}/api/households/shopping/lists" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}"
-```
-
-### Add Recipe to Shopping List
-```bash
-# First get shopping list ID
-LIST_ID=$(curl -s "${MEALIE_URL}/api/households/shopping/lists" \
   -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
-  grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-
-# Add recipe ingredients to list
-curl -X POST "${MEALIE_URL}/api/households/shopping/items" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d "{\"shopping_list_id\":\"${LIST_ID}\",\"recipe_references\":[{\"recipe_id\":\"RECIPE_ID\",\"recipe_quantity\":1}]}"
+  jq '.[] | {id, name}'
 ```
 
 ### Add Item to Shopping List
 ```bash
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
+# Get first shopping list ID
 LIST_ID=$(curl -s "${MEALIE_URL}/api/households/shopping/lists" \
   -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
-  grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+  jq -r '.[0].id')
 
+# Add item
 curl -X POST "${MEALIE_URL}/api/households/shopping/items" \
   -H "Authorization: Bearer ${MEALIE_TOKEN}" \
   -H "Content-Type: application/json" \
   -d "{\"shopping_list_id\":\"${LIST_ID}\",\"note\":\"milk\",\"quantity\":1}"
 ```
 
+### Add Recipe to Shopping List
+```bash
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
+# Get shopping list ID
+LIST_ID=$(curl -s "${MEALIE_URL}/api/households/shopping/lists" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq -r '.[0].id')
+
+# Get recipe ID by slug
+RECIPE_ID=$(curl -s "${MEALIE_URL}/api/recipes/spaghetti-bolognese" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq -r '.id')
+
+# Add recipe ingredients to list
+curl -X POST "${MEALIE_URL}/api/households/shopping/items" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{\"shopping_list_id\":\"${LIST_ID}\",\"recipe_references\":[{\"recipe_id\":\"${RECIPE_ID}\",\"recipe_quantity\":1}]}"
+```
+
 ### Get Categories
 ```bash
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
 curl -s "${MEALIE_URL}/api/categories" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}"
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq '.[].name'
 ```
 
 ### Get Tags
 ```bash
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
 curl -s "${MEALIE_URL}/api/tags" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}"
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq '.[].name'
 ```
 
 ## Response Format
@@ -157,6 +237,21 @@ Most responses follow this pattern:
   "per_page": 20,
   "total": 100
 }
+```
+
+Use `jq` to extract data:
+```bash
+# Get total count
+jq '.total'
+
+# Get all item names
+jq -r '.items[].name'
+
+# Get first item's id
+jq -r '.items[0].id'
+
+# Pretty print a recipe
+jq '{name, description, ingredients: [.recipeIngredient[].note]}'
 ```
 
 ## Error Handling
@@ -176,6 +271,13 @@ Error response body:
     "error": true
   }
 }
+```
+
+Check for errors with jq:
+```bash
+curl -s "${MEALIE_URL}/api/recipes" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq 'if .detail then "Error: \(.detail.message)" else . end'
 ```
 
 ## Security Notes
