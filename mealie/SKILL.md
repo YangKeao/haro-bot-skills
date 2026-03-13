@@ -85,47 +85,26 @@ MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
 curl -s "${MEALIE_URL}/api/recipes?search=pasta&perPage=20" \
   -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
   jq -r '.items[].name'
-
-# Search with URL encoding for Chinese
-curl -s "${MEALIE_URL}/api/recipes?search=%E7%81%AB%E9%94%85&perPage=20" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
-  jq -r '.items[].name'
 ```
 
-Optional parameters:
-- `search` - Search query (URL encode for special characters)
-- `categories` - Filter by category (comma-separated)
-- `tags` - Filter by tag (comma-separated)
-- `page`, `perPage` - Pagination
-
-### Get Single Recipe
-```bash
-MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
-MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
-
-# Get by slug
-curl -s "${MEALIE_URL}/api/recipes/spaghetti-bolognese" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
-  jq '{name, description, recipeIngredient: [.recipeIngredient[].note], recipeInstructions: [.recipeInstructions[].text]}'
-```
-
-### Create Recipe from URL
-Import a recipe from a website:
+### Get a Specific Recipe
 
 ```bash
 MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
 MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
 
-curl -X POST "${MEALIE_URL}/api/recipes/create-url" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://www.allrecipes.com/recipe/12345"}'
+# Get by slug (use URL-encoded slug)
+curl -s "${MEALIE_URL}/api/recipes/recipe-slug-here" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}"
 ```
 
-Returns the slug of the created recipe.
+## Creating Recipes (Manual Entry)
 
-### Create Recipe (JSON)
-Create a new recipe directly:
+**IMPORTANT**: Do NOT use URL import (`/api/recipes/create-url`) - it is unreliable. Always create recipes manually with the following two-step process.
+
+### Step 1: Create Basic Recipe (POST)
+
+Create the recipe with basic info to get a slug:
 
 ```bash
 MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
@@ -135,28 +114,87 @@ curl -X POST "${MEALIE_URL}/api/recipes" \
   -H "Authorization: Bearer ${MEALIE_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "My Recipe",
-    "description": "A delicious meal",
-    "recipeIngredient": [
-      {"note": "2 cups flour"},
-      {"note": "1 cup sugar"}
-    ],
-    "recipeInstructions": [
-      {"text": "Mix ingredients"},
-      {"text": "Bake at 350F for 30 minutes"}
-    ]
+    "name": "Recipe Name 食谱中文名"
   }'
+# Returns: "recipe-slug"
 ```
 
-### Get Today's Meal Plan
+### Step 2: Update with Details (PATCH)
+
+After creating, update with ingredients, instructions, and other details:
+
 ```bash
 MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
 MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
 
-curl -s "${MEALIE_URL}/api/households/mealplans/today" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
-  jq '.[] | {date: .date, recipe: .recipe.name}'
+curl -X PATCH "${MEALIE_URL}/api/recipes/recipe-slug" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "Recipe description here",
+    "recipeYield": "4份",
+    "orgURL": "https://example.com/original-recipe",
+    "recipeIngredient": [
+      {"quantity": 6, "note": "个 蛋黄", "referenceId": "f47ac10b-58cc-4372-a567-0e02b2c3d479"},
+      {"quantity": 100, "note": "g 细砂糖", "referenceId": "f47ac10b-58cc-4372-a567-0e02b2c3d480"},
+      {"quantity": 250, "note": "ml 牛奶", "referenceId": "f47ac10b-58cc-4372-a567-0e02b2c3d481"},
+      {"note": "少许 盐（可选）", "referenceId": "f47ac10b-58cc-4372-a567-0e02b2c3d482"}
+    ],
+    "recipeInstructions": [
+      {"id": "a1b2c3d4-0001-4000-8000-000000000001", "title": "", "summary": "", "text": "第一步：准备工作描述", "ingredientReferences": []},
+      {"id": "a1b2c3d4-0001-4000-8000-000000000002", "title": "", "summary": "", "text": "第二步：烹饪步骤描述", "ingredientReferences": []}
+    ],
+    "extras": {
+      "参考来源": "https://other-source.com/recipe"
+    }
+  }'
 ```
+
+### Ingredient Format Details
+
+The `recipeIngredient` array requires specific fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `quantity` | number | Amount (e.g., 6, 100, 250). Use `null` for items without quantity |
+| `note` | string | Unit + ingredient name (e.g., "个 蛋黄", "g 细砂糖", "ml 牛奶") |
+| `referenceId` | UUID | Unique ID for this ingredient (generate with `uuidgen` or use any valid UUID) |
+
+**Important**: The display will show as "{quantity} {note}" (e.g., "6 个 蛋黄", "100 g 细砂糖").
+
+Example ingredient formats:
+- `{"quantity": 6, "note": "个 蛋黄", "referenceId": "..."}` → displays as "6 个 蛋黄"
+- `{"quantity": 100, "note": "g 细砂糖", "referenceId": "..."}` → displays as "100 g 细砂糖"
+- `{"note": "少许 盐（可选）", "referenceId": "..."}` → displays as "少许 盐（可选）"
+
+### Instruction Format Details
+
+The `recipeInstructions` array requires:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Unique ID for this step |
+| `title` | string | Step title (usually empty "") |
+| `summary` | string | Step summary (usually empty "") |
+| `text` | string | Full instruction text |
+| `ingredientReferences` | array | Links to ingredients (usually empty []) |
+
+### Adding Source URLs
+
+- `orgURL`: The primary source URL (shows as clickable link in Mealie)
+- `extras`: Object for additional metadata, can include multiple reference URLs
+
+### Tags and Categories
+
+**Note**: Tags and categories require `slug` field. If you get validation errors, omit them or use existing slugs:
+
+```bash
+# First, get existing tags/categories to find slugs
+curl -s "${MEALIE_URL}/api/tags" -H "Authorization: Bearer ${MEALIE_TOKEN}" | jq '.[] | {name, slug}'
+curl -s "${MEALIE_URL}/api/categories" -H "Authorization: Bearer ${MEALIE_TOKEN}" | jq '.[] | {name, slug}'
+```
+
+## Shopping Lists
 
 ### Get Shopping Lists
 ```bash
@@ -164,28 +202,10 @@ MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
 MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
 
 curl -s "${MEALIE_URL}/api/households/shopping/lists" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
-  jq '.[] | {id, name}'
+  -H "Authorization: Bearer ${MEALIE_TOKEN}"
 ```
 
-### Add Item to Shopping List
-```bash
-MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
-MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
-
-# Get first shopping list ID
-LIST_ID=$(curl -s "${MEALIE_URL}/api/households/shopping/lists" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
-  jq -r '.[0].id')
-
-# Add item
-curl -X POST "${MEALIE_URL}/api/households/shopping/items" \
-  -H "Authorization: Bearer ${MEALIE_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d "{\"shopping_list_id\":\"${LIST_ID}\",\"note\":\"milk\",\"quantity\":1}"
-```
-
-### Add Recipe to Shopping List
+### Add Recipe Ingredients to Shopping List
 ```bash
 MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
 MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
