@@ -152,7 +152,9 @@ curl -X PATCH "${MEALIE_URL}/api/recipes/recipe-slug" \
 
 ### Ingredient Format Details
 
-The `recipeIngredient` array requires specific fields:
+The `recipeIngredient` array supports two formats:
+
+**Full format (with all fields):**
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -160,16 +162,23 @@ The `recipeIngredient` array requires specific fields:
 | `note` | string | Unit + ingredient name (e.g., "个 蛋黄", "g 细砂糖", "ml 牛奶") |
 | `referenceId` | UUID | Unique ID for this ingredient (generate with `uuidgen` or use any valid UUID) |
 
-**Important**: The display will show as "{quantity} {note}" (e.g., "6 个 蛋黄", "100 g 细砂糖").
+**Simplified format (also works):**
+```json
+{"note": "4只 鸡腿（带骨带皮）"}
+```
+The system will auto-generate missing fields. This is useful for quick recipe entry.
+
+**Important**: The display will show as "{quantity} {note}" (e.g., "6 个 蛋黄", "100 g 细砂糖"). For simplified format, it displays just the note text.
 
 Example ingredient formats:
 - `{"quantity": 6, "note": "个 蛋黄", "referenceId": "..."}` → displays as "6 个 蛋黄"
 - `{"quantity": 100, "note": "g 细砂糖", "referenceId": "..."}` → displays as "100 g 细砂糖"
 - `{"note": "少许 盐（可选）", "referenceId": "..."}` → displays as "少许 盐（可选）"
+- `{"note": "4只 鸡腿（带骨带皮）"}` → displays as "4只 鸡腿（带骨带皮）" (simplified)
 
 ### Instruction Format Details
 
-The `recipeInstructions` array requires:
+The `recipeInstructions` array requires **all fields** - simplified format will cause errors:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -178,6 +187,16 @@ The `recipeInstructions` array requires:
 | `summary` | string | Step summary (usually empty "") |
 | `text` | string | Full instruction text |
 | `ingredientReferences` | array | Links to ingredients (usually empty []) |
+
+**⚠️ IMPORTANT**: Unlike ingredients, instructions do NOT support simplified format. You must include all fields:
+
+```json
+// ❌ WRONG - This will cause "TypeError" error
+{"text": "第一步：准备工作"}
+
+// ✅ CORRECT - Include all required fields
+{"title": "", "summary": "", "text": "第一步：准备工作", "ingredientReferences": []}
+```
 
 ### Adding Source URLs
 
@@ -193,6 +212,26 @@ The `recipeInstructions` array requires:
 curl -s "${MEALIE_URL}/api/tags" -H "Authorization: Bearer ${MEALIE_TOKEN}" | jq '.[] | {name, slug}'
 curl -s "${MEALIE_URL}/api/categories" -H "Authorization: Bearer ${MEALIE_TOKEN}" | jq '.[] | {name, slug}'
 ```
+
+## Common Pitfalls
+
+### 1. POST ignores most fields
+When creating a recipe with POST, only the `name` field is processed. Other fields (ingredients, instructions, description) are ignored and replaced with default template values. **Always use two-step process**: POST to create, then PATCH to update.
+
+### 2. Instruction format errors
+Using simplified instruction format `{"text": "step"}` will return `{"detail":{"message":"Unknown Error","error":true,"exception":"TypeError"}}`. Always use the full format with all required fields.
+
+### 3. PATCH returns null on success
+A successful PATCH may return `null` in the response body. This doesn't mean failure - check the recipe with a GET request to verify the update.
+
+### 4. jq not in PATH
+Remember to export PATH after installing jq: `export PATH="$HOME/bin:$PATH"`. Or use full path `~/bin/jq`.
+
+### 5. Token validation errors
+If you get "Could not validate credentials", ensure:
+- Token is copied correctly (no truncation)
+- Config file has correct permissions (600)
+- Using exact URL from config (no trailing slashes)
 
 ## Shopping Lists
 
