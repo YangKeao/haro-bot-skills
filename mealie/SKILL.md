@@ -198,6 +198,25 @@ curl -X PATCH "${MEALIE_URL}/api/recipes/recipe-slug" \
 
 The description will be displayed in menu listings, so keep it clean and aesthetic.
 
+### Origin URL
+
+**IMPORTANT**: Every recipe **MUST** include an `orgURL` field with the original recipe source URL.
+
+This helps track where the recipe came from and allows users to find the original source for more details.
+
+**Example**:
+```json
+{
+  "orgURL": "https://www.xiachufang.com/recipe/12345/"
+}
+```
+
+**Notes**:
+- Always include the source URL when creating recipes
+- If the recipe is original, use a personal blog or leave as personal reference
+- Search for reliable recipe sources before creating (xiachufang.com, meishichina.com, zhihu.com, etc.)
+
+
 
 ### Ingredient Format Details
 
