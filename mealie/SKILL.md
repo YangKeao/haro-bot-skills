@@ -214,7 +214,44 @@ This helps track where the recipe came from and allows users to find the origina
 **Notes**:
 - Always include the source URL when creating recipes
 - If the recipe is original, use a personal blog or leave as personal reference
-- Search for reliable recipe sources before creating (xiachufang.com, meishichina.com, zhihu.com, etc.)
+- **Search both Chinese AND English websites** to find the best recipes (see Recipe Sources below)
+
+### Recipe Sources
+
+**IMPORTANT**: When searching for recipes, search **both Chinese and English websites** to find the best quality recipes.
+
+#### Chinese Recipe Websites
+
+**Reliable sources**:
+- **下厨房 (xiachufang.com)** - https://m.xiachufang.com/ - Largest Chinese recipe community
+- **美食天下 (meishichina.com)** - https://home.meishichina.com/ - Popular Chinese cooking site
+- **香哈网** - https://m.xiangha.com/ - Chinese recipe platform
+- **知乎** - https://www.zhihu.com/ - Quality recipe articles and discussions
+- **豆瓣** - https://www.douban.com/ - Recipe reviews and food discussions
+
+#### English Recipe Websites
+
+**Mediterranean & Middle Eastern**:
+- **The Mediterranean Dish** - https://www.themediterraneandish.com/ - Authentic Mediterranean recipes
+- **Serious Eats** - https://www.seriouseats.com/ - Science-based cooking techniques
+- **BBC Good Food** - https://www.bbcgoodfood.com/ - Tested recipes with clear instructions
+
+**General Cooking**:
+- **Allrecipes** - https://www.allrecipes.com/ - Large recipe community with reviews
+- **Food Network** - https://www.foodnetwork.com/ - Professional chef recipes
+- **Bon Appétit** - https://www.bonappetit.com/ - High-quality recipes and techniques
+- **Tasty** - https://tasty.co/ - Simple, visual recipes
+
+**Baking & Desserts**:
+- **King Arthur Baking** - https://www.kingarthurbaking.com/ - Professional baking recipes
+- **Sally's Baking Addiction** - https://sallysbakingaddiction.com/ - Reliable dessert recipes
+
+**Tips for finding recipes**:
+1. Search in both Chinese and English for the same dish to compare recipes
+2. Check multiple sources to find the most reliable version
+3. Look for recipes with reviews, ratings, or detailed instructions
+4. Prefer recipes from established cooking websites over random blogs
+5. For international cuisines, search in the cuisine's native language (e.g., Italian recipes in English, Japanese recipes in Japanese)
 
 
 
