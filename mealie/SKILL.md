@@ -174,6 +174,30 @@ curl -X PATCH "${MEALIE_URL}/api/recipes/recipe-slug" \
 - 汤羹 - Soups
 - 异国风味 - International cuisine
 - 甜品 - Desserts
+### Description Format
+
+**IMPORTANT**: The `description` field must follow a specific format for menu display.
+
+**Format**: `食材1/食材2/食材3，口味1/口味2`
+
+**Rules**:
+- Use `/` (forward slash) to separate multiple ingredients or flavors
+- Use `，` (Chinese comma) to separate ingredients from flavors
+- No adjectives or decorative words (e.g., "经典", "美味", "诱人")
+- Keep it concise for menu display
+- Omit cooking methods (not needed for menu)
+
+**Examples**:
+- ✅ `火龙果/奶油/吉利丁，甜`
+- ✅ `鸡肉/奶油/白葡萄酒/蘑菇，奶香/咸`
+- ✅ `排骨，酸甜`
+- ✅ `牛肉/红酒/胡萝卜，酒香/咸`
+- ❌ `法式经典家常菜，鸡肉先用黄油煎至金黄...` (includes adjectives and cooking methods)
+- ❌ `优雅的意大利奶冻配上粉色火龙果，视觉效果惊艳` (includes adjectives)
+- ❌ `食材：火龙果、奶油；口味：甜` (too verbose, use `/` instead)
+
+The description will be displayed in menu listings, so keep it clean and aesthetic.
+
 
 ### Ingredient Format Details
 
