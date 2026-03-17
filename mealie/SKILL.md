@@ -300,6 +300,44 @@ curl -X PATCH "${MEALIE_URL}/api/recipes/fa-shi-nai-you-tun-ji" \
 
 The same format applies to categories (use `recipeCategory` field instead of `tags`).
 
+### Create New Tag
+
+If no existing tag fits your recipe, you can create a new one:
+
+```bash
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
+# Create a new tag (only name is required)
+curl -X POST "${MEALIE_URL}/api/organizers/tags" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "新标签名"}'
+
+# Response will include the full tag object with auto-generated id and slug:
+# {
+#   "name": "新标签名",
+#   "groupId": "...",
+#   "id": "...",
+#   "slug": "xin-biao-qian-ming"
+# }
+```
+
+After creating, use the returned object to add the tag to your recipe.
+
+**Tip**: Use descriptive tag names in Chinese (e.g., "快手菜", "宴客菜", "宝宝辅食") for better organization.
+
+### Create New Category
+
+Same process for categories:
+
+```bash
+curl -X POST "${MEALIE_URL}/api/organizers/categories" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "新分类名"}'
+```
+
 ## Common Pitfalls
 
 ### 1. POST ignores most fields
