@@ -121,11 +121,18 @@ curl -X POST "${MEALIE_URL}/api/recipes" \
 
 ### Step 2: Update with Details (PATCH)
 
-After creating, update with ingredients, instructions, and other details:
+After creating, update with ingredients, instructions, and other details. **Best practice: include tags in this step to organize your recipe.**
 
 ```bash
 MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
 MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
+# First, get available tags to find the ones you want
+curl -s "${MEALIE_URL}/api/organizers/tags?perPage=50" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq '.items[] | {id, groupId, name, slug}'
+
+# Then update the recipe with all details including tags
 
 curl -X PATCH "${MEALIE_URL}/api/recipes/recipe-slug" \
   -H "Authorization: Bearer ${MEALIE_TOKEN}" \
@@ -144,11 +151,29 @@ curl -X PATCH "${MEALIE_URL}/api/recipes/recipe-slug" \
       {"id": "a1b2c3d4-0001-4000-8000-000000000001", "title": "", "summary": "", "text": "第一步：准备工作描述", "ingredientReferences": []},
       {"id": "a1b2c3d4-0001-4000-8000-000000000002", "title": "", "summary": "", "text": "第二步：烹饪步骤描述", "ingredientReferences": []}
     ],
+    "tags": [
+      {
+        "id": "tag-id-from-api",
+        "groupId": "group-id-from-api",
+        "name": "Tag Name",
+        "slug": "tag-slug"
+      }
+    ],
     "extras": {
       "参考来源": "https://other-source.com/recipe"
     }
   }'
 ```
+
+
+**Recommended tags for different recipe types:**
+- 肉类主菜 (rou-lei-zhu-cai) - Meat dishes
+- 海鲜 - Seafood
+- 素菜 - Vegetarian
+- 主食 - Main course (rice, noodles, etc.)
+- 汤羹 - Soups
+- 异国风味 - International cuisine
+- 甜品 - Desserts
 
 ### Ingredient Format Details
 
