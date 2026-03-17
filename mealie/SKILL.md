@@ -205,13 +205,75 @@ The `recipeInstructions` array requires **all fields** - simplified format will 
 
 ### Tags and Categories
 
-**Note**: Tags and categories require `slug` field. If you get validation errors, omit them or use existing slugs:
+Tags and categories help organize recipes. **Important**: They require full object format with all fields.
+
+### Get Available Tags/Categories
 
 ```bash
-# First, get existing tags/categories to find slugs
-curl -s "${MEALIE_URL}/api/tags" -H "Authorization: Bearer ${MEALIE_TOKEN}" | jq '.[] | {name, slug}'
-curl -s "${MEALIE_URL}/api/categories" -H "Authorization: Bearer ${MEALIE_TOKEN}" | jq '.[] | {name, slug}'
+MEALIE_URL=$(jq -r '.url' ~/.config/mealie/config.json)
+MEALIE_TOKEN=$(jq -r '.token' ~/.config/mealie/config.json)
+
+# Get tags with full info (including id and groupId)
+curl -s "${MEALIE_URL}/api/organizers/tags?perPage=50" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq '.items[] | {id, groupId, name, slug}'
+
+# Get categories with full info
+curl -s "${MEALIE_URL}/api/organizers/categories?perPage=50" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq '.items[] | {id, groupId, name, slug}'
 ```
+
+### Add Tags to Recipe
+
+**⚠️ IMPORTANT**: Tags require the **full object** with `id`, `groupId`, `name`, and `slug`. Simplified format will cause TypeError.
+
+```bash
+# First, get the full tag info
+TAG_INFO=$(curl -s "${MEALIE_URL}/api/organizers/tags?perPage=50" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" | \
+  jq '.items[] | select(.slug == "tag-slug-here")')
+
+# Then add to recipe
+curl -X PATCH "${MEALIE_URL}/api/recipes/recipe-slug" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"tags\": [
+      {
+        \"id\": \"tag-id-from-api\",
+        \"groupId\": \"group-id-from-api\",
+        \"name\": \"Tag Name\",
+        \"slug\": \"tag-slug-here\"
+      }
+    ]
+  }"
+```
+
+Example - Adding multiple tags to a recipe:
+```bash
+curl -X PATCH "${MEALIE_URL}/api/recipes/fa-shi-nai-you-tun-ji" \
+  -H "Authorization: Bearer ${MEALIE_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tags": [
+      {
+        "id": "71d6a565-3686-4146-b030-9f462c5400d9",
+        "groupId": "64fd5e77-eebd-4002-b493-a66455a2a66c",
+        "name": "肉类主菜",
+        "slug": "rou-lei-zhu-cai"
+      },
+      {
+        "id": "1e86de35-5fa6-41a0-9341-ebe1862a7d0f",
+        "groupId": "64fd5e77-eebd-4002-b493-a66455a2a66c",
+        "name": "异国风味",
+        "slug": "yi-guo-feng-wei"
+      }
+    ]
+  }'
+```
+
+The same format applies to categories (use `recipeCategory` field instead of `tags`).
 
 ## Common Pitfalls
 
@@ -232,6 +294,20 @@ If you get "Could not validate credentials", ensure:
 - Token is copied correctly (no truncation)
 - Config file has correct permissions (600)
 - Using exact URL from config (no trailing slashes)
+
+### 6. Tags/Categories format errors
+Using simplified tag format `{"name": "Tag", "slug": "tag"}` will cause TypeError. You must include all fields:
+- `id` - Tag ID from API
+- `groupId` - Group ID from API
+- `name` - Tag name
+- `slug` - Tag slug
+
+**Workflow**: First GET available tags from `/api/organizers/tags`, then use the full object in PATCH.
+
+### 7. Wrong API endpoints for tags
+- ❌ `/api/tags` - Returns HTML page, not API response
+- ✅ `/api/organizers/tags` - Correct endpoint for tags
+- ✅ `/api/organizers/categories` - Correct endpoint for categories
 
 ## Shopping Lists
 
