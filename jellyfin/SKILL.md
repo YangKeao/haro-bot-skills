@@ -10,15 +10,11 @@ Interact with Jellyfin media server using the REST API to browse and search your
 
 ## Configuration
 
-Set these environment variables before using:
+**Configuration file path**: `/app/workspace/.jellyfin/config.json`
 
-```bash
-export JELLYFIN_URL="https://your-jellyfin-server.com"
-export JELLYFIN_API_KEY="your-api-key"
-export JELLYFIN_USER_ID="your-user-id"
-```
+This path persists across pod restarts via PVC.
 
-Or store credentials in `~/.jellyfin/config.json`:
+Store credentials in the config file:
 
 ```json
 {
@@ -27,6 +23,19 @@ Or store credentials in `~/.jellyfin/config.json`:
   "user_id": "your-user-id"
 }
 ```
+### Loading Configuration
+
+Before making API calls, load the configuration:
+
+```bash
+JELLYFIN_CONFIG="/app/workspace/.jellyfin/config.json"
+if [ -f "$JELLYFIN_CONFIG" ]; then
+  export JELLYFIN_URL=$(grep -o '"url"[^,]*' "$JELLYFIN_CONFIG" | cut -d'"' -f4)
+  export JELLYFIN_API_KEY=$(grep -o '"api_key"[^,]*' "$JELLYFIN_CONFIG" | cut -d'"' -f4)
+  export JELLYFIN_USER_ID=$(grep -o '"user_id"[^,]*' "$JELLYFIN_CONFIG" | cut -d'"' -f4)
+fi
+```
+
 
 ### Getting API Key and User ID
 
@@ -35,6 +44,18 @@ Or store credentials in `~/.jellyfin/config.json`:
    ```bash
    curl -s -H "X-Emby-Token: YOUR_API_KEY" "${JELLYFIN_URL}/Users"
    ```
+3. **Create config file**:
+   ```bash
+   mkdir -p /app/workspace/.jellyfin
+   cat > /app/workspace/.jellyfin/config.json << 'EOF'
+   {
+     "url": "https://jellyfin.keao.space",
+     "api_key": "YOUR_API_KEY",
+     "user_id": "YOUR_USER_ID"
+   }
+   EOF
+   ```
+
 
 ## Core API Pattern
 
